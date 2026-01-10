@@ -63,5 +63,3 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
-
-# Updated at 2026-01-10T12:56:55.213Z
