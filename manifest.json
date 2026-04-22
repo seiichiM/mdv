@@ -1,6 +1,6 @@
 {
-  "name": "mdv",
-  "short_name": "mdv",
+  "name": "MDV",
+  "short_name": "MDV",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
