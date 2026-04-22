@@ -3,72 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Markdown Viewer v4</title>
-    <!-- Marked.js for Markdown parsing -->
+    <title>シンプル Markdown ビュアー</title>
+    <!-- Tailwind CSS & Typographyプラグイン (文章を美しく装飾するため) -->
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <!-- Marked.js (MarkdownをHTMLに変換するライブラリ) -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- DOMPurify for sanitization -->
-    <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
-    
-    <!-- MathJax Configuration -->
-    <script>
-    window.MathJax = {
-      tex: {
-        inlineMath: [['$', '$'], ['\\(', '\\)']],
-        displayMath: [['$$', '$$'], ['\\[', '\\]']],
-        processEscapes: true
-      },
-      options: {
-        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
-      },
-      svg: {
-        fontCache: 'global'
-      },
-      startup: {
-        typeset: false // Manual typesetting only
-      }
-    };
-    </script>
-    <!-- MathJax for LaTeX support -->
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f4f4f4;
-        }
-        #container {
-            background-color: #fff;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        #file-input-container {
-            margin-bottom: 20px;
-            padding: 20px;
-            border: 2px dashed #ccc;
-            border-radius: 8px;
-            text-align: center;
-            background: #fafafa;
-            cursor: pointer;
-        }
-        #file-input-container:hover {
-            background: #f0f0f0;
-            border-color: #999;
-        }
-        h1, h2, h3 { border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
-        code { background-color: #f6f8fa; padding: 0.2em 0.4em; border-radius: 3px; font-family: monospace; }
-        pre { background-color: #f6f8fa; padding: 16px; border-radius: 6px; overflow: auto; }
-        blockquote { border-left: 4px solid #dfe2e5; color: #6a737d; padding-left: 16px; margin: 0; }
-        table { border-collapse: collapse; width: 100%; margin: 15px 0; }
-        th, td { border: 1px solid #dfe2e5; padding: 6px 13px; }
-        th { background-color: #f6f8fa; }
-        tr:nth-child(2n) { background-color: #f6f8fa; }
-        img { max-width: 100%; }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; }
+        /* ドラッグ＆ドロップでファイルが上に来た時の背景色 */
+        .dragover { background-color: #e2e8f0 !important; }
     </style>
 
     <!-- PWA Settings -->
@@ -80,111 +23,132 @@
         }
     </script>
 </head>
-<body>
+<body class="bg-gray-100 min-h-screen flex flex-col transition-colors duration-200" id="dropZone">
 
-<div id="file-input-container" onclick="document.getElementById('file-input').click()">
-    <p>Click here to select a Markdown (.md) file</p>
-    <input type="file" id="file-input" accept=".md,.markdown" style="display:none">
-</div>
+    <!-- ヘッダー (印刷時には非表示になります) -->
+    <header class="bg-gray-800 text-white p-3 flex justify-between items-center shadow-md print:hidden sticky top-0 z-10">
+        <h1 class="text-lg md:text-xl font-bold flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+            <span id="headerTitle">Markdown Viewer</span>
+        </h1>
+        <div class="flex items-center gap-4">
+            <!-- ファイル選択用 (非表示にしてラベルから呼び出す) -->
+            <input type="file" id="fileInput" accept=".md,.txt,.markdown" class="hidden" />
+            <label for="fileInput" class="bg-blue-600 hover:bg-blue-500 text-sm px-4 py-2 rounded cursor-pointer transition shadow flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                ファイルを開く
+            </label>
+        </div>
+    </header>
 
-<div id="container">
-    <div id="content">Select a file to view...</div>
-</div>
-
-<script>
-    const fileInput = document.getElementById('file-input');
-    const contentDiv = document.getElementById('content');
-
-    marked.setOptions({
-        gfm: true,
-        breaks: true,
-        headerIds: true,
-        mangle: false
-    });
-
-    // Escape math before markdown parsing
-    function escapeMath(markdown) {
-        const mathStore = [];
+    <!-- メインコンテンツ (ここにプレビューが表示されます) -->
+    <main class="flex-grow p-4 md:p-8 flex justify-center relative">
         
-        // 1. Block Math: $$ ... $$
-        markdown = markdown.replace(/\$\$([\s\S]*?)\$\$/g, (match, equation) => {
-            // Remove the $$ delimiters for internal storage
-            mathStore.push({ type: 'block', equation: equation.trim() });
-            return `%%%MATH_BLOCK_${mathStore.length - 1}%%%`;
+        <!-- 初期表示のメッセージ -->
+        <div id="placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 pointer-events-none">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <p class="text-xl font-bold mb-2">.md ファイルをここにドロップ</p>
+            <p class="text-sm">または右上のボタンから選択してください</p>
+        </div>
+
+        <!-- プレビュー表示エリア (最初は非表示) -->
+        <!-- max-w-3xl でドキュメントが読みやすい適度な幅に制限しています -->
+        <div id="preview" class="prose prose-slate md:prose-lg w-full max-w-3xl bg-white p-8 md:p-12 shadow-sm rounded-lg border border-gray-200 hidden print:shadow-none print:border-none print:p-0">
+            <!-- マークダウンの変換結果がここに入ります -->
+        </div>
+
+    </main>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const dropZone = document.getElementById('dropZone');
+        const placeholder = document.getElementById('placeholder');
+        const preview = document.getElementById('preview');
+        const headerTitle = document.getElementById('headerTitle');
+
+        // Marked.js の設定（改行対応など）
+        marked.setOptions({
+            breaks: true,
+            gfm: true
         });
 
-        // 2. Inline Math: $ ... $
-        markdown = markdown.replace(/\$((?:[^\$]|\\\$)+)\$/g, (match, equation) => {
-            // Remove the $ delimiters
-            mathStore.push({ type: 'inline', equation: equation.trim() });
-            return `%%%MATH_INLINE_${mathStore.length - 1}%%%`;
-        });
-
-        return { markdown, mathStore };
-    }
-
-    // Restore math using LaTeX delimiters preferred by MathJax 3 without manual $ symbols
-    function restoreMath(html, mathStore) {
-        return html.replace(/%%%MATH_(BLOCK|INLINE)_(\d+)%%%/g, (match, type, index) => {
-            const item = mathStore[parseInt(index)];
-            if (!item) return match;
-            
-            // Use \( ... \) for inline and \[ ... \] for block
-            // This prevents literal $ from appearing if MathJax processes them correctly
-            if (type === 'INLINE') {
-                return `\\(${item.equation}\\)`;
-            } else {
-                return `\\[${item.equation}\\]`;
+        // ----------------------------------------------------
+        // ファイルを読み込んで画面に表示する関数
+        // ----------------------------------------------------
+        function loadFile(file) {
+            // 拡張子の簡易チェック (テキスト形式のファイルか)
+            if (!file.name.match(/\.(md|txt|markdown)$/i)) {
+                alert('Markdownファイル（.md）を選択してください。');
+                return;
             }
-        });
-    }
 
-    function renderMarkdown(markdown) {
-        // Hide the file input container
-        document.getElementById('file-input-container').style.display = 'none';
-
-        const protectedData = escapeMath(markdown);
-        let html = marked.parse(protectedData.markdown);
-        html = restoreMath(html, protectedData.mathStore);
-        html = DOMPurify.sanitize(html);
-        
-        contentDiv.innerHTML = html;
-
-        if (window.MathJax && window.MathJax.typesetPromise) {
-            // Reset typeset state and process
-            window.MathJax.texReset();
-            window.MathJax.typesetPromise([contentDiv])
-                .then(() => {
-                    // Success
-                })
-                .catch((err) => console.log('MathJax error:', err));
-        }
-    }
-
-    fileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (event) => renderMarkdown(event.target.result);
-        reader.readAsText(file);
-    });
-
-    // Drag and Drop support
-    const dropZone = document.getElementById('file-input-container');
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = '#007bff'; dropZone.style.background = '#eef'; });
-    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.style.borderColor = '#ccc'; dropZone.style.background = '#fafafa'; });
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.style.borderColor = '#ccc';
-        dropZone.style.background = '#fafafa';
-        const file = e.dataTransfer.files[0];
-        if (file && (file.name.endsWith('.md') || file.name.endsWith('.markdown'))) {
             const reader = new FileReader();
-            reader.onload = (event) => renderMarkdown(event.target.result);
+            
+            // ファイルの読み込みが完了したときの処理
+            reader.onload = function(e) {
+                const text = e.target.result;
+                
+                // マークダウンをHTMLに変換してセット
+                preview.innerHTML = marked.parse(text);
+                
+                // 表示の切り替え
+                placeholder.classList.add('hidden');
+                preview.classList.remove('hidden');
+                
+                // ヘッダーにファイル名を表示
+                headerTitle.textContent = file.name;
+                
+                // 一番上にスクロール
+                window.scrollTo(0, 0);
+            };
+
+            // テキストとしてファイルを読み込む
             reader.readAsText(file);
         }
-    });
-</script>
 
+        // ----------------------------------------------------
+        // 1. 「ファイルを開く」ボタンから選択された時の処理
+        // ----------------------------------------------------
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                loadFile(file);
+            }
+            // 同じファイルを再度選べるようにリセットしておく
+            this.value = ''; 
+        });
+
+        // ----------------------------------------------------
+        // 2. ドラッグ＆ドロップされた時の処理
+        // ----------------------------------------------------
+        // ファイルが画面上に入ってきた時
+        dropZone.addEventListener('dragover', function(e) {
+            e.preventDefault(); // ブラウザのデフォルトの挙動（ファイルを開いてしまう）を防ぐ
+            dropZone.classList.add('dragover'); // 背景色を変えてフィードバック
+        });
+
+        // ファイルが画面上から出た時
+        dropZone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+        });
+
+        // ファイルがドロップされた時
+        dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                loadFile(file);
+            }
+        });
+    </script>
 </body>
 </html>
